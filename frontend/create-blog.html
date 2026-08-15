@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Write a post — Marginalia</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="bg-ambient"></div>
+<div class="nav-overlay"></div>
+
+<header class="site-header">
+  <nav class="navbar">
+    <a href="index.html" class="brand-mark"><span>M</span></a>
+    <button class="nav-toggle" aria-label="Toggle menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="create-blog.html" class="active">Write</a>
+      <span data-auth-slot style="display:contents"></span>
+    </div>
+  </nav>
+</header>
+
+<main>
+  <div class="editor-shell">
+    <span class="eyebrow">New post</span>
+    <h1 style="font-size:34px; margin:8px 0 26px;">Write a new blog</h1>
+
+    <div class="editor-card">
+      <form id="create-blog-form" novalidate>
+        <div class="form-banner error"></div>
+        <div class="editor-grid">
+          <div class="field" style="grid-column: 1 / -1;">
+            <label for="blog-title">Blog title</label>
+            <input type="text" id="blog-title" name="title" placeholder="A title worth clicking on">
+            <div class="field-error" id="err-title"></div>
+          </div>
+
+          <div class="field">
+            <label for="blog-category">Category</label>
+            <select id="blog-category" name="category">
+              <option value="">Choose one</option>
+              <option value="Craft">Craft</option>
+              <option value="Life">Life</option>
+              <option value="Tech">Tech</option>
+              <option value="Travel">Travel</option>
+              <option value="Opinion">Opinion</option>
+            </select>
+            <div class="field-error" id="err-category"></div>
+          </div>
+
+          <div class="field">
+            <label for="blog-image-url">Cover image URL <span style="text-transform:none;">(optional)</span></label>
+            <input type="url" id="blog-image-url" name="imageUrl" placeholder="https://...">
+          </div>
+        </div>
+
+        <div class="field">
+          <label>Or upload a cover image</label>
+          <label class="image-drop" for="blog-image">
+            Click to choose an image from your device
+          </label>
+          <input type="file" id="blog-image" accept="image/*" style="display:none;">
+          <div class="image-preview">
+            <img src="" alt="Cover preview">
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="blog-content">Content</label>
+          <textarea id="blog-content" name="content" placeholder="Start writing…"></textarea>
+          <div class="char-count" data-char-count>0 characters</div>
+          <div class="field-error" id="err-content"></div>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block">Publish post</button>
+      </form>
+    </div>
+  </div>
+</main>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div>
+      <a href="index.html" class="brand">Marginalia<span class="dot">.</span></a>
+      <p>A small, personal blogging space built for writers who'd rather leave a margin note than shout into a feed.</p>
+    </div>
+    <div class="footer-col">
+      <h4>Navigate</h4>
+      <a href="index.html">Home</a>
+      <a href="login.html">Login</a>
+      <a href="register.html">Register</a>
+    </div>
+    <div class="footer-col">
+      <h4>Your space</h4>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="create-blog.html">Write a post</a>
+    </div>
+  </div>
+  <div class="footer-bottom">© 2026 Marginalia. Built as a learning project.</div>
+</footer>
+
+<script src="js/config.js"></script>
+<script src="js/script.js"></script>
+</body>
+</html>

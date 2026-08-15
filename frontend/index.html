@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Marginalia — Write in the margins</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="bg-ambient"></div>
+<div class="nav-overlay"></div>
+
+<header class="site-header">
+  <nav class="navbar">
+    <a href="index.html" class="brand-mark"><span>M</span></a>
+    <button class="nav-toggle" aria-label="Toggle menu" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
+    <div class="nav-links">
+      <a href="index.html" class="active">Home</a>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="create-blog.html">Write</a>
+      <span data-auth-slot style="display:contents"></span>
+    </div>
+  </nav>
+</header>
+
+<main>
+  <section class="hero">
+    <div class="hero-inner">
+      <span class="hero-eyebrow anim">No algorithm. No feed. <strong>Just the page.</strong></span>
+
+      <div class="headline-wrap">
+        <h1 class="headline">
+          <span>Write in the margins,</span>
+          <span><span class="struck">not the noise</span></span>
+        </h1>
+        <div class="margin-note anim">publish when it's actually ready</div>
+      </div>
+
+      <p class="subhead anim">Marginalia is a small, quiet space for personal blogs.
+        Start a draft, keep your notes, and publish only when a post is ready to be read.</p>
+
+      <div class="hero-actions anim">
+        <a href="register.html" class="btn btn-primary">Start writing — it's free</a>
+        <a href="#featured" class="btn btn-ghost">Browse posts</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="stats-footer">
+    <div class="stats-grid">
+      <div class="stat anim">
+        <span class="glyph">0</span>
+        <span class="value" data-count data-target="0" data-decimals="0" data-suffix="">0</span>
+        <span class="label">Algorithms in your feed</span>
+      </div>
+      <div class="stat anim">
+        <span class="glyph">%</span>
+        <span class="value" data-count data-target="100" data-decimals="0" data-suffix="%">0%</span>
+        <span class="label">Yours — export anytime</span>
+      </div>
+      <div class="stat anim">
+        <span class="glyph">¶</span>
+        <span class="value" data-count data-target="5" data-decimals="0" data-suffix=" min">0 min</span>
+        <span class="label">Avg. time to publish</span>
+      </div>
+      <div class="stat anim">
+        <span class="glyph">∞</span>
+        <span class="value">∞</span>
+        <span class="label">Drafts you can keep</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="featured">
+    <div class="wrap">
+      <div class="section-head">
+        <div>
+          <span class="eyebrow">From the notebook</span>
+          <h2>Featured posts</h2>
+        </div>
+        <a href="dashboard.html">Write your own →</a>
+      </div>
+      <div class="blog-grid" data-featured-blogs></div>
+    </div>
+  </section>
+
+  <section class="section" style="padding-top:0;">
+    <div class="wrap">
+      <div class="section-head" style="border:none; padding-bottom:0; margin-bottom:24px;">
+        <div>
+          <span class="eyebrow">How it works</span>
+          <h2>Three steps, no fuss</h2>
+        </div>
+      </div>
+      <div class="blog-grid">
+        <div class="blog-card">
+          <div class="body">
+            <div class="meta">Step 01</div>
+            <h3>Create an account</h3>
+            <p class="excerpt">Register with your name and email — takes under a minute, no verification emails to chase.</p>
+          </div>
+        </div>
+        <div class="blog-card">
+          <div class="body">
+            <div class="meta">Step 02</div>
+            <h3>Write a post</h3>
+            <p class="excerpt">Pick a category, add a cover image, and write. Your dashboard keeps every draft in one place.</p>
+          </div>
+        </div>
+        <div class="blog-card">
+          <div class="body">
+            <div class="meta">Step 03</div>
+            <h3>Publish</h3>
+            <p class="excerpt">Hit publish and your post appears on the home feed for anyone passing through.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="footer-inner">
+    <div>
+      <a href="index.html" class="brand">Marginalia<span class="dot">.</span></a>
+      <p>A small, personal blogging space built for writers who'd rather leave a margin note than shout into a feed.</p>
+    </div>
+    <div class="footer-col">
+      <h4>Navigate</h4>
+      <a href="index.html">Home</a>
+      <a href="login.html">Login</a>
+      <a href="register.html">Register</a>
+    </div>
+    <div class="footer-col">
+      <h4>Your space</h4>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="create-blog.html">Write a post</a>
+    </div>
+  </div>
+  <div class="footer-bottom">© 2026 Marginalia. Built as a learning project.</div>
+</footer>
+
+<script src="js/config.js"></script>
+<script src="js/script.js"></script>
+</body>
+</html>

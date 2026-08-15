@@ -1,0 +1,11 @@
+const express = require('express');
+const router = express.Router();
+const { createBlog, getBlogs, getMyBlogs, deleteBlog } = require('../controllers/blogController');
+const authenticate = require('../middleware/auth');
+
+router.get('/', getBlogs);                       // public: view all blogs
+router.get('/mine', authenticate, getMyBlogs);    // protected: only the logged-in user's posts
+router.post('/', authenticate, createBlog);       // protected: must be logged in
+router.delete('/:id', authenticate, deleteBlog);  // protected: only the owner can delete
+
+module.exports = router;
