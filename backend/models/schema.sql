@@ -1,29 +1,31 @@
--- Run this once against your MySQL server to create the database and tables.
--- Example: mysql -u root -p < models/schema.sql
+-- Run this once in your Supabase project's SQL Editor
+-- (Project -> SQL Editor -> New query -> paste -> Run).
 
-CREATE DATABASE IF NOT EXISTS blog_app;
-USE blog_app;
-
-CREATE TABLE IF NOT EXISTS users (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  name VARCHAR(100) NOT NULL,
-  email VARCHAR(150) NOT NULL UNIQUE,
-  password VARCHAR(255) NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+create table if not exists users (
+  id bigint generated always as identity primary key,
+  name varchar(100) not null,
+  email varchar(150) not null unique,
+  password varchar(255) not null,
+  created_at timestamptz not null default now()
 );
 
-CREATE TABLE IF NOT EXISTS blogs (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  user_id INT NOT NULL,
-  title VARCHAR(255) NOT NULL,
-  content TEXT NOT NULL,
-  category VARCHAR(50) DEFAULT NULL,
-  image MEDIUMTEXT DEFAULT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+create table if not exists blogs (
+  id bigint generated always as identity primary key,
+  user_id bigint not null references users(id) on delete cascade,
+  title varchar(255) not null,
+  content text not null,
+  category varchar(50),
+  image text,
+  created_at timestamptz not null default now()
 );
 
--- If you already ran an older version of this schema and the `blogs` table
--- exists without these columns, run this once to migrate it:
--- ALTER TABLE blogs ADD COLUMN category VARCHAR(50) DEFAULT NULL;
--- ALTER TABLE blogs ADD COLUMN image MEDIUMTEXT DEFAULT NULL;
+create index if not exists blogs_user_id_idx on blogs (user_id);
+create index if not exists blogs_created_at_idx on blogs (created_at desc);
+
+-- Lock these tables out of Supabase's auto-generated public REST/GraphQL API.
+-- Our Express backend talks to Postgres with the service role key, which
+-- bypasses Row Level Security entirely -- so this just makes sure nobody can
+-- read or write users/blogs directly through the client-side (anon key) API,
+-- since no policies are defined below. All access goes through our own API.
+alter table users enable row level security;
+alter table blogs enable row level security;

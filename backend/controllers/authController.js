@@ -1,6 +1,6 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const pool = require('../config/db');
+const supabase = require('../config/supabase');
 
 // POST /api/auth/register
 async function register(req, res) {
@@ -15,8 +15,13 @@ async function register(req, res) {
     }
 
     // Check if user already exists
-    const [existing] = await pool.query('SELECT id FROM users WHERE email = ?', [email]);
-    if (existing.length > 0) {
+    const { data: existing, error: lookupError } = await supabase
+      .from('users')
+      .select('id')
+      .eq('email', email)
+      .maybeSingle();
+    if (lookupError) throw lookupError;
+    if (existing) {
       return res.status(409).json({ message: 'An account with this email already exists.' });
     }
 
@@ -25,13 +30,15 @@ async function register(req, res) {
     const hashedPassword = await bcrypt.hash(password, salt);
 
     // Insert user
-    const [result] = await pool.query(
-      'INSERT INTO users (name, email, password) VALUES (?, ?, ?)',
-      [name, email, hashedPassword]
-    );
+    const { data: user, error: insertError } = await supabase
+      .from('users')
+      .insert({ name, email, password: hashedPassword })
+      .select('id, name, email')
+      .single();
+    if (insertError) throw insertError;
 
     const token = jwt.sign(
-      { id: result.insertId, email },
+      { id: user.id, email: user.email },
       process.env.JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
     );
@@ -39,7 +46,7 @@ async function register(req, res) {
     return res.status(201).json({
       message: 'Registration successful.',
       token,
-      user: { id: result.insertId, name, email },
+      user,
     });
   } catch (err) {
     console.error('Register error:', err);
@@ -56,12 +63,16 @@ async function login(req, res) {
       return res.status(400).json({ message: 'Email and password are required.' });
     }
 
-    const [rows] = await pool.query('SELECT * FROM users WHERE email = ?', [email]);
-    if (rows.length === 0) {
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('*')
+      .eq('email', email)
+      .maybeSingle();
+    if (error) throw error;
+    if (!user) {
       return res.status(401).json({ message: 'Invalid email or password.' });
     }
 
-    const user = rows[0];
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
       return res.status(401).json({ message: 'Invalid email or password.' });

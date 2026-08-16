@@ -72,6 +72,11 @@ const API = {
       if (!ok) return { success: false, error: data.message };
       return { success: true, blogs: (data.blogs || []).map(normalizeBlog) };
     }
+    if (action === "getBlogById") {
+      const { ok, data } = await rawRequest(`/blogs/${encodeURIComponent(params.id)}`);
+      if (!ok) return { success: false, error: data.message };
+      return { success: true, blog: normalizeBlog(data.blog) };
+    }
     throw new Error(`Unknown GET action: ${action}`);
   },
 
@@ -497,7 +502,7 @@ async function initDashboard() {
           <h3>${blog.title}</h3>
           <p class="excerpt">${blog.content}</p>
           <div class="card-foot">
-            <span class="read-more">By you</span>
+            <a class="read-more" href="post.html?id=${blog.id}">View →</a>
             <div class="card-actions">
               <button type="button" data-delete="${blog.id}">Delete</button>
             </div>
@@ -710,6 +715,7 @@ async function initHomeFeed() {
     blogs.forEach(blog => {
       const card = document.createElement("article");
       card.className = "blog-card";
+      card.style.cursor = "pointer";
       card.innerHTML = `
         <img class="thumb" src="${blog.image || 'https://images.unsplash.com/photo-1455390582262-044cdead277a?w=800&q=80'}" alt="${blog.title}">
         <div class="body">
@@ -718,14 +724,104 @@ async function initHomeFeed() {
           <p class="excerpt">${blog.content}</p>
           <div class="card-foot">
             <span>${blog.author}</span>
-            <span class="read-more">Read →</span>
+            <a class="read-more" href="post.html?id=${blog.id}">Read →</a>
           </div>
         </div>
       `;
+      card.addEventListener("click", (e) => {
+        if (e.target.closest("a")) return; // let the explicit link navigate on its own
+        window.location.href = `post.html?id=${blog.id}`;
+      });
       grid.appendChild(card);
     });
   } catch (err) {
     grid.innerHTML = `<p class="field-error show">${friendlyNetworkError(err)}</p>`;
+  }
+}
+
+/* ==========================================================================
+   Single post page (post.html) — reads ?id= from the URL and renders that
+   blog post's full details.
+   ========================================================================== */
+async function initPostPage() {
+  const root = document.querySelector("[data-post-detail]");
+  if (!root) return;
+
+  const loadingEl = document.querySelector("[data-post-loading]");
+  const errorEl = document.querySelector("[data-post-error]");
+  const id = new URLSearchParams(window.location.search).get("id");
+
+  function showError(message) {
+    if (loadingEl) loadingEl.style.display = "none";
+    root.style.display = "none";
+    if (errorEl) {
+      errorEl.textContent = message;
+      errorEl.style.display = "block";
+    }
+  }
+
+  if (!id) {
+    showError("No post was specified. Head back to the homepage and pick a post to read.");
+    return;
+  }
+
+  try {
+    const result = await API.get("getBlogById", { id });
+    if (!result.success || !result.blog) {
+      showError(result.error || "That post couldn't be found — it may have been deleted.");
+      return;
+    }
+
+    const blog = result.blog;
+    if (loadingEl) loadingEl.style.display = "none";
+    root.style.display = "block";
+
+    document.title = `${blog.title} — Marginalia`;
+
+    const imgEl = document.querySelector("[data-post-image]");
+    if (imgEl) {
+      imgEl.src = blog.image || "https://images.unsplash.com/photo-1455390582262-044cdead277a?w=1200&q=80";
+      imgEl.alt = blog.title;
+    }
+    const categoryEl = document.querySelector("[data-post-category]");
+    if (categoryEl) categoryEl.textContent = blog.category || "Uncategorized";
+
+    const dateEl = document.querySelector("[data-post-date]");
+    if (dateEl) dateEl.textContent = new Date(blog.date).toLocaleDateString(undefined, {
+      year: "numeric", month: "long", day: "numeric",
+    });
+
+    const titleEl = document.querySelector("[data-post-title]");
+    if (titleEl) titleEl.textContent = blog.title;
+
+    const authorEl = document.querySelector("[data-post-author]");
+    if (authorEl) authorEl.textContent = blog.author || "Unknown";
+
+    const authorInitialEl = document.querySelector("[data-post-author-initial]");
+    if (authorInitialEl) authorInitialEl.textContent = (blog.author || "?").trim().charAt(0).toUpperCase();
+
+    const contentEl = document.querySelector("[data-post-content]");
+    if (contentEl) {
+      // Plain-text posts: preserve blank-line paragraph breaks without
+      // treating the content as HTML.
+      contentEl.innerHTML = "";
+      String(blog.content || "")
+        .split(/\n{2,}/)
+        .map(p => p.trim())
+        .filter(Boolean)
+        .forEach(paragraph => {
+          const p = document.createElement("p");
+          p.textContent = paragraph;
+          contentEl.appendChild(p);
+        });
+      if (!contentEl.children.length) {
+        const p = document.createElement("p");
+        p.textContent = blog.content || "";
+        contentEl.appendChild(p);
+      }
+    }
+  } catch (err) {
+    showError(friendlyNetworkError(err));
   }
 }
 
@@ -741,4 +837,5 @@ document.addEventListener("DOMContentLoaded", () => {
   initLoginForm();
   initDashboard();
   initCreateBlogForm();
+  initPostPage();
 });
