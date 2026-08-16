@@ -53,12 +53,23 @@ async function createBlog(req, res) {
 }
 
 // GET /api/blogs  (public - list all blogs, newest first)
+// Optional query params: ?search=term (matches title or content)
+//                         ?category=Tech (exact category match)
 async function getBlogs(req, res) {
   try {
-    const { data, error } = await supabase
-      .from('blogs')
-      .select(BLOG_SELECT)
-      .order('created_at', { ascending: false });
+    const { search, category } = req.query;
+
+    let query = supabase.from('blogs').select(BLOG_SELECT);
+
+    if (search && search.trim()) {
+      const term = search.trim().replace(/[%_]/g, (m) => `\\${m}`);
+      query = query.or(`title.ilike.%${term}%,content.ilike.%${term}%`);
+    }
+    if (category && category.trim()) {
+      query = query.eq('category', category.trim());
+    }
+
+    const { data, error } = await query.order('created_at', { ascending: false });
     if (error) throw error;
 
     return res.json({ blogs: data.map(mapBlogRow) });
@@ -107,6 +118,53 @@ async function getBlogById(req, res) {
   }
 }
 
+// PUT /api/blogs/:id  (protected - only the owner can update)
+async function updateBlog(req, res) {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+    const { title, content, category, image } = req.body;
+
+    if (!title || !content) {
+      return res.status(400).json({ message: 'Title and content are required.' });
+    }
+
+    const { data: existing, error: lookupError } = await supabase
+      .from('blogs')
+      .select('id, user_id')
+      .eq('id', id)
+      .maybeSingle();
+    if (lookupError) throw lookupError;
+    if (!existing) {
+      return res.status(404).json({ message: 'Blog post not found.' });
+    }
+    if (existing.user_id !== userId) {
+      return res.status(403).json({ message: 'You can only edit your own posts.' });
+    }
+
+    const { data, error } = await supabase
+      .from('blogs')
+      .update({
+        title,
+        content,
+        category: category || null,
+        image: image || null,
+      })
+      .eq('id', id)
+      .select(BLOG_SELECT)
+      .single();
+    if (error) throw error;
+
+    return res.json({
+      message: 'Blog post updated successfully.',
+      blog: mapBlogRow(data),
+    });
+  } catch (err) {
+    console.error('Update blog error:', err);
+    return res.status(500).json({ message: 'Server error while updating blog.' });
+  }
+}
+
 // DELETE /api/blogs/:id  (protected - only the owner can delete)
 async function deleteBlog(req, res) {
   try {
@@ -136,4 +194,4 @@ async function deleteBlog(req, res) {
   }
 }
 
-module.exports = { createBlog, getBlogs, getMyBlogs, getBlogById, deleteBlog };
+module.exports = { createBlog, getBlogs, getMyBlogs, getBlogById, updateBlog, deleteBlog };

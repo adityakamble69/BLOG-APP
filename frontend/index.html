@@ -80,10 +80,23 @@
       <div class="section-head">
         <div>
           <span class="eyebrow">From the notebook</span>
-          <h2>Featured posts</h2>
+          <h2>All posts</h2>
         </div>
         <a href="dashboard.html">Write your own →</a>
       </div>
+
+      <div class="blog-filters">
+        <input type="search" data-blog-search placeholder="Search posts by title or content…" aria-label="Search posts">
+        <select data-blog-category-filter aria-label="Filter by category">
+          <option value="">All categories</option>
+          <option value="Craft">Craft</option>
+          <option value="Life">Life</option>
+          <option value="Tech">Tech</option>
+          <option value="Travel">Travel</option>
+          <option value="Opinion">Opinion</option>
+        </select>
+      </div>
+
       <div class="blog-grid" data-featured-blogs></div>
     </div>
   </section>

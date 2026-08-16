@@ -64,10 +64,11 @@ blog-app/
 |--------|-----------------------|:--------------:|-----------------------------------------|
 | POST   | `/api/auth/register`  | No             | Create a new user account              |
 | POST   | `/api/auth/login`     | No             | Log in, returns a JWT token            |
-| GET    | `/api/blogs`          | No             | List all blog posts (newest first)     |
+| GET    | `/api/blogs`          | No             | List all blog posts (newest first) — supports `?search=` and `?category=` |
 | GET    | `/api/blogs/mine`     | Yes (Bearer)   | List only the logged-in user's posts   |
 | GET    | `/api/blogs/:id`      | No             | Get one blog post's full details       |
 | POST   | `/api/blogs`          | Yes (Bearer)   | Create a new blog post                 |
+| PUT    | `/api/blogs/:id`      | Yes (Bearer)   | Update one of your own posts           |
 | DELETE | `/api/blogs/:id`      | Yes (Bearer)   | Delete one of your own posts           |
 
 **Register**
@@ -101,6 +102,20 @@ Authorization: Bearer <token>
 GET /api/blogs/42
 ```
 
+**Update Blog**
+```json
+PUT /api/blogs/42
+Authorization: Bearer <token>
+{ "title": "Updated title", "content": "Updated content", "category": "Life", "image": "https://..." }
+```
+
+**Search / Filter Blogs**
+```
+GET /api/blogs?search=hello
+GET /api/blogs?category=Tech
+GET /api/blogs?search=hello&category=Tech
+```
+
 **Delete Blog**
 ```json
 DELETE /api/blogs/42
@@ -115,6 +130,8 @@ The frontend is plain HTML/CSS/JS — no build step needed.
 2. Make sure `CONFIG.API_BASE` in `frontend/js/config.js` matches your backend URL (defaults to `http://localhost:5000/api`).
 3. Update `CLIENT_ORIGIN` in the backend `.env` to match wherever your frontend is served from, so CORS allows it.
 4. Click any post card on the homepage or dashboard to open its full details on `post.html`.
+5. On the homepage, use the search box and category dropdown above the post grid to filter posts.
+6. On your dashboard, click **Edit** on any of your own posts to update it, or **Delete** to remove it. The post detail page also shows an **Edit post** button when you're viewing your own post.
 
 ## Notes
 

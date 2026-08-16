@@ -63,7 +63,11 @@ const API = {
 
   async get(action, params = {}) {
     if (action === "getBlogs") {
-      const { ok, data } = await rawRequest("/blogs");
+      const qs = new URLSearchParams();
+      if (params.search) qs.set("search", params.search);
+      if (params.category) qs.set("category", params.category);
+      const query = qs.toString();
+      const { ok, data } = await rawRequest(`/blogs${query ? `?${query}` : ""}`);
       if (!ok) return { success: false, error: data.message };
       return { success: true, blogs: (data.blogs || []).map(normalizeBlog) };
     }
@@ -78,6 +82,24 @@ const API = {
       return { success: true, blog: normalizeBlog(data.blog) };
     }
     throw new Error(`Unknown GET action: ${action}`);
+  },
+
+  async put(action, payload = {}) {
+    if (action === "updateBlog") {
+      const { ok, data } = await rawRequest(`/blogs/${encodeURIComponent(payload.id)}`, {
+        method: "PUT",
+        auth: true,
+        body: {
+          title: payload.title,
+          content: payload.content,
+          category: payload.category,
+          image: payload.image
+        }
+      });
+      if (!ok) return { success: false, error: data.message };
+      return { success: true, blog: normalizeBlog(data.blog) };
+    }
+    throw new Error(`Unknown PUT action: ${action}`);
   },
 
   async post(action, payload = {}) {
@@ -504,6 +526,7 @@ async function initDashboard() {
           <div class="card-foot">
             <a class="read-more" href="post.html?id=${blog.id}">View →</a>
             <div class="card-actions">
+              <a href="create-blog.html?id=${blog.id}" class="edit-link" data-edit="${blog.id}">Edit</a>
               <button type="button" data-delete="${blog.id}">Delete</button>
             </div>
           </div>
@@ -553,9 +576,11 @@ async function initDashboard() {
 }
 
 /* ==========================================================================
-   Create Blog page
+   Create / Edit Blog page (create-blog.html handles both — an ?id= in the
+   URL switches it into edit mode, prefilling the form and calling
+   updateBlog instead of createBlog on submit).
    ========================================================================== */
-function initCreateBlogForm() {
+async function initCreateBlogForm() {
   const form = document.querySelector("#create-blog-form");
   if (!form) return;
 
@@ -564,6 +589,9 @@ function initCreateBlogForm() {
     window.location.href = "login.html";
     return;
   }
+
+  const editId = new URLSearchParams(window.location.search).get("id");
+  const isEditMode = Boolean(editId);
 
   const titleInput = form.querySelector("#blog-title");
   const categoryInput = form.querySelector("#blog-category");
@@ -577,6 +605,55 @@ function initCreateBlogForm() {
   const submitBtn = form.querySelector("button[type=submit]");
 
   let imageDataUrl = "";
+
+  if (isEditMode) {
+    const heading = document.querySelector("[data-editor-heading]");
+    const eyebrow = document.querySelector("[data-editor-eyebrow]");
+    if (heading) heading.textContent = "Edit your post";
+    if (eyebrow) eyebrow.textContent = "Editing";
+    submitBtn.textContent = "Save changes";
+    document.title = "Edit post — Marginalia";
+
+    submitBtn.disabled = true;
+    banner.textContent = "Loading your post…";
+    banner.className = "form-banner show";
+
+    try {
+      const result = await API.get("getBlogById", { id: editId });
+      if (!result.success || !result.blog) {
+        banner.textContent = result.error || "That post couldn't be found.";
+        banner.className = "form-banner error show";
+        return;
+      }
+      const blog = result.blog;
+      if (blog.author_id !== user.id) {
+        banner.textContent = "You can only edit your own posts.";
+        banner.className = "form-banner error show";
+        submitBtn.style.display = "none";
+        return;
+      }
+
+      titleInput.value = blog.title || "";
+      categoryInput.value = blog.category || "";
+      contentInput.value = blog.content || "";
+      charCount.textContent = `${contentInput.value.length} characters`;
+      if (blog.image) {
+        imageUrlInput.value = blog.image.startsWith("data:") ? "" : blog.image;
+        imageDataUrl = blog.image.startsWith("data:") ? blog.image : "";
+        previewImg.src = blog.image;
+        preview.classList.add("show");
+      }
+
+      banner.textContent = "";
+      banner.className = "form-banner";
+    } catch (err) {
+      banner.textContent = friendlyNetworkError(err);
+      banner.className = "form-banner error show";
+      return;
+    } finally {
+      submitBtn.disabled = false;
+    }
+  }
 
   contentInput.addEventListener("input", () => {
     charCount.textContent = `${contentInput.value.length} characters`;
@@ -623,17 +700,21 @@ function initCreateBlogForm() {
     }
 
     submitBtn.disabled = true;
-    showLoadingOverlay("Publishing your post…");
+    showLoadingOverlay(isEditMode ? "Saving your changes…" : "Publishing your post…");
 
     try {
-      const result = await API.post("createBlog", {
+      const payload = {
         title: titleInput.value.trim(),
         category: categoryInput.value,
         image: imageDataUrl || imageUrlInput.value.trim(),
         content: contentInput.value.trim(),
         author: user.name,
         authorEmail: user.email
-      });
+      };
+
+      const result = isEditMode
+        ? await API.put("updateBlog", { ...payload, id: editId })
+        : await API.post("createBlog", payload);
 
       if (!result.success) {
         hideLoadingOverlay();
@@ -643,7 +724,9 @@ function initCreateBlogForm() {
         return;
       }
 
-      banner.textContent = "Published! Redirecting to your dashboard…";
+      banner.textContent = isEditMode
+        ? "Saved! Redirecting to your dashboard…"
+        : "Published! Redirecting to your dashboard…";
       banner.className = "form-banner success show";
       setTimeout(() => { window.location.href = "dashboard.html"; }, 800);
     } catch (err) {
@@ -700,43 +783,64 @@ async function initHomeFeed() {
   const grid = document.querySelector("[data-featured-blogs]");
   if (!grid) return;
 
-  grid.innerHTML = `<p class="field-hint">Loading posts…</p>`;
+  const searchInput = document.querySelector("[data-blog-search]");
+  const categorySelect = document.querySelector("[data-blog-category-filter]");
 
-  try {
-    const result = await API.get("getBlogs");
-    const blogs = (result.success ? result.blogs : []).slice(0, 6);
+  async function loadBlogs() {
+    grid.innerHTML = `<p class="field-hint">Loading posts…</p>`;
 
-    grid.innerHTML = "";
-    if (!blogs.length) {
-      grid.innerHTML = `<p class="field-hint">No posts yet — be the first to <a href="register.html">write one</a>.</p>`;
-      return;
-    }
-
-    blogs.forEach(blog => {
-      const card = document.createElement("article");
-      card.className = "blog-card";
-      card.style.cursor = "pointer";
-      card.innerHTML = `
-        <img class="thumb" src="${blog.image || 'https://images.unsplash.com/photo-1455390582262-044cdead277a?w=800&q=80'}" alt="${blog.title}">
-        <div class="body">
-          <div class="meta"><span>${blog.category}</span><span>·</span><span>${new Date(blog.date).toLocaleDateString()}</span></div>
-          <h3>${blog.title}</h3>
-          <p class="excerpt">${blog.content}</p>
-          <div class="card-foot">
-            <span>${blog.author}</span>
-            <a class="read-more" href="post.html?id=${blog.id}">Read →</a>
-          </div>
-        </div>
-      `;
-      card.addEventListener("click", (e) => {
-        if (e.target.closest("a")) return; // let the explicit link navigate on its own
-        window.location.href = `post.html?id=${blog.id}`;
+    try {
+      const result = await API.get("getBlogs", {
+        search: searchInput ? searchInput.value.trim() : "",
+        category: categorySelect ? categorySelect.value : ""
       });
-      grid.appendChild(card);
-    });
-  } catch (err) {
-    grid.innerHTML = `<p class="field-error show">${friendlyNetworkError(err)}</p>`;
+      const blogs = result.success ? result.blogs : [];
+
+      grid.innerHTML = "";
+      if (!blogs.length) {
+        grid.innerHTML = `<p class="field-hint">No posts match your search — try a different term or category.</p>`;
+        return;
+      }
+
+      blogs.forEach(blog => {
+        const card = document.createElement("article");
+        card.className = "blog-card";
+        card.style.cursor = "pointer";
+        card.innerHTML = `
+          <img class="thumb" src="${blog.image || 'https://images.unsplash.com/photo-1455390582262-044cdead277a?w=800&q=80'}" alt="${blog.title}">
+          <div class="body">
+            <div class="meta"><span>${blog.category}</span><span>·</span><span>${new Date(blog.date).toLocaleDateString()}</span></div>
+            <h3>${blog.title}</h3>
+            <p class="excerpt">${blog.content}</p>
+            <div class="card-foot">
+              <span>${blog.author}</span>
+              <a class="read-more" href="post.html?id=${blog.id}">Read →</a>
+            </div>
+          </div>
+        `;
+        card.addEventListener("click", (e) => {
+          if (e.target.closest("a")) return; // let the explicit link navigate on its own
+          window.location.href = `post.html?id=${blog.id}`;
+        });
+        grid.appendChild(card);
+      });
+    } catch (err) {
+      grid.innerHTML = `<p class="field-error show">${friendlyNetworkError(err)}</p>`;
+    }
   }
+
+  if (searchInput) {
+    let debounceTimer;
+    searchInput.addEventListener("input", () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(loadBlogs, 350);
+    });
+  }
+  if (categorySelect) {
+    categorySelect.addEventListener("change", loadBlogs);
+  }
+
+  await loadBlogs();
 }
 
 /* ==========================================================================
@@ -799,6 +903,15 @@ async function initPostPage() {
 
     const authorInitialEl = document.querySelector("[data-post-author-initial]");
     if (authorInitialEl) authorInitialEl.textContent = (blog.author || "?").trim().charAt(0).toUpperCase();
+
+    const editLinkEl = document.querySelector("[data-post-edit-link]");
+    if (editLinkEl) {
+      const currentUser = Session.get();
+      if (currentUser && currentUser.id === blog.author_id) {
+        editLinkEl.href = `create-blog.html?id=${blog.id}`;
+        editLinkEl.style.display = "inline-block";
+      }
+    }
 
     const contentEl = document.querySelector("[data-post-content]");
     if (contentEl) {
