@@ -8,7 +8,24 @@ const blogRoutes = require('./routes/blogRoutes');
 const app = express();
 
 // Middleware
-app.use(cors({ origin: process.env.CLIENT_ORIGIN || '*' }));
+// CLIENT_ORIGIN can be a single URL or a comma-separated list (e.g. your
+// local dev server + your deployed frontend). Leave it unset to allow all
+// origins, which is fine here since we authenticate with a Bearer token
+// (not cookies), so there's no CSRF/credentials risk from a permissive CORS policy.
+const allowedOrigins = (process.env.CLIENT_ORIGIN || '')
+  .split(',')
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+app.use(cors({
+  origin: allowedOrigins.length
+    ? (origin, callback) => {
+        // Allow non-browser tools (curl, Postman, server-to-server) which send no Origin header
+        if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+        callback(new Error(`Origin ${origin} is not allowed by CORS`));
+      }
+    : true,
+}));
 app.use(express.json({ limit: '8mb' })); // cover images can arrive as base64 data URLs
 
 // Health check
