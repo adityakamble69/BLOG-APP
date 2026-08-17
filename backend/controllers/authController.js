@@ -33,7 +33,7 @@ async function register(req, res) {
     const { data: user, error: insertError } = await supabase
       .from('users')
       .insert({ name, email, password: hashedPassword })
-      .select('id, name, email')
+      .select('id, name, email, created_at')
       .single();
     if (insertError) throw insertError;
 
@@ -87,7 +87,7 @@ async function login(req, res) {
     return res.json({
       message: 'Login successful.',
       token,
-      user: { id: user.id, name: user.name, email: user.email },
+      user: { id: user.id, name: user.name, email: user.email, created_at: user.created_at },
     });
   } catch (err) {
     console.error('Login error:', err);

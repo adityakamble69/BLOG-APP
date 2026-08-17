@@ -136,7 +136,11 @@ The frontend is plain HTML/CSS/JS — no build step needed.
 ## Notes
 
 - Passwords are hashed with bcrypt before being stored — Supabase never sees a plaintext password.
-- Auth uses our own JWTs (not Supabase Auth): the token is returned on login/register and kept in the browser's `localStorage`; it's sent as a `Bearer` header on protected requests (create blog, my blogs, delete blog).
+- Auth uses our own JWTs (not Supabase Auth): the token is returned on login/register and kept in the browser's `localStorage`; it's sent as a `Bearer` header on protected requests (create/update/delete blog, my blogs).
+- **Route protection**: `dashboard.html` and `create-blog.html` check for a valid session on load and redirect to `login.html` if none is found; `login.html`/`register.html` redirect straight to the dashboard if you're already logged in. On the server, every write (`POST`/`PUT`/`DELETE /api/blogs`) and `/api/blogs/mine` require a valid JWT via the `authenticate` middleware — this is the real enforcement point, since client-side redirects are just UX.
+- **Session expiry handling**: if a protected request ever comes back `401` (missing/invalid/expired token), the frontend automatically clears the stored session and redirects to `login.html?expired=1`, which shows a "session expired" message.
+- The dashboard's **My blogs** grid always comes from `GET /api/blogs/mine`, which the backend filters by the JWT's user id — so it's impossible to see another user's private list even if you tampered with the frontend.
+- The dashboard profile card and "member since" date come straight from the JWT-authenticated user object returned on login.
 - The backend talks to Postgres via `@supabase/supabase-js` using the **service role key**, which bypasses Row Level Security — that's expected and safe here because the key only ever lives on the server. `schema.sql` enables RLS with no policies, so nobody can read/write these tables through Supabase's public client-side API.
 - `models/schema.sql` defines two tables: `users` and `blogs` (with a foreign key to `users`). `blogs` also has `category` and `image` columns.
 - Cover images can be a pasted URL or an uploaded file (stored as a base64 data URL) — the server accepts JSON bodies up to 8MB to allow for this.

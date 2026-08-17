@@ -53,6 +53,17 @@ async function rawRequest(path, { method = "GET", body, auth = false } = {}) {
     body: body !== undefined ? JSON.stringify(body) : undefined
   });
   const data = await res.json().catch(() => ({}));
+
+  // A 401 on an authenticated request means the token is missing, invalid,
+  // or expired — the session is no longer valid, so clear it and send the
+  // person back to log in rather than leaving them stuck on a broken page.
+  if (auth && res.status === 401) {
+    Session.clear();
+    if (!/\/(login|register|index)\.html$/.test(window.location.pathname) && window.location.pathname !== "/") {
+      window.location.href = "login.html?expired=1";
+    }
+  }
+
   return { ok: res.ok, status: res.status, data };
 }
 
@@ -330,6 +341,12 @@ function initRegisterForm() {
   const form = document.querySelector("#register-form");
   if (!form) return;
 
+  // Already logged in? Skip straight to the dashboard.
+  if (Session.get()) {
+    window.location.href = "dashboard.html";
+    return;
+  }
+
   const nameInput = form.querySelector("#reg-name");
   const emailInput = form.querySelector("#reg-email");
   const pwInput = form.querySelector("#reg-password");
@@ -416,10 +433,22 @@ function initLoginForm() {
   const form = document.querySelector("#login-form");
   if (!form) return;
 
+  // Already logged in? No need to log in again.
+  if (Session.get()) {
+    window.location.href = "dashboard.html";
+    return;
+  }
+
   const emailInput = form.querySelector("#login-email");
   const pwInput = form.querySelector("#login-password");
   const banner = form.querySelector(".form-banner");
   const submitBtn = form.querySelector("button[type=submit]");
+
+  // Arrived here after an expired/invalid session got auto-logged-out.
+  if (new URLSearchParams(window.location.search).get("expired") === "1") {
+    banner.textContent = "Your session expired — please log in again.";
+    banner.className = "form-banner error show";
+  }
 
   form.querySelectorAll(".password-toggle").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -490,9 +519,15 @@ async function initDashboard() {
     return;
   }
 
-  document.querySelector("[data-user-name]").textContent = user.name;
+  document.querySelectorAll("[data-user-name]").forEach(el => { el.textContent = user.name; });
   document.querySelector("[data-user-email]").textContent = user.email;
   document.querySelector("[data-user-initial]").textContent = user.name.trim().charAt(0).toUpperCase();
+  const sinceEl = document.querySelector("[data-user-since]");
+  if (sinceEl) {
+    sinceEl.textContent = user.created_at
+      ? `Member since ${new Date(user.created_at).toLocaleDateString(undefined, { year: "numeric", month: "long" })}`
+      : "";
+  }
 
   const grid = document.querySelector("[data-my-blogs]");
   const emptyState = document.querySelector("[data-empty-state]");
