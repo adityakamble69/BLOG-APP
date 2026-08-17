@@ -4,5 +4,5 @@
    your server runs on a different host/port, or when you deploy.
    ========================================================================== */
 const CONFIG = {
-  API_BASE: "http://localhost:5000/api"
+  API_BASE: "https://blog-app-backend-f9ks.onrender.com/api"
 };
